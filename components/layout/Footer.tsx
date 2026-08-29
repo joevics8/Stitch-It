@@ -2,30 +2,18 @@ import Link from 'next/link';
 
 const columns = [
   {
-    heading: 'Quizzes',
+    heading: 'Product',
     links: [
-      { label: 'All quizzes', href: '/quizzes' },
-      { label: 'Exam prep quizzes', href: '/quizzes?category=exam-prep' },
+      { label: 'Get measured', href: '/measure' },
+      { label: 'How it works', href: '/#how-it-works' },
     ],
-  },
-  {
-    heading: 'Scholarships',
-    links: [
-      { label: 'Browse scholarships', href: '/scholarships' },
-      { label: 'Fully funded', href: '/scholarships/browse?funding=full' },
-      { label: 'Masters', href: '/scholarships/browse?level=masters' },
-    ],
-  },
-  {
-    heading: 'Guides',
-    links: [{ label: 'All guides', href: '/blog' }],
   },
   {
     heading: 'Company',
     links: [
       { label: 'About', href: '/about' },
       { label: 'Contact', href: '/contact' },
-      { label: 'Editorial policy', href: '/about#editorial-policy' },
+      { label: 'FAQ', href: '/faq' },
     ],
   },
   {
@@ -33,7 +21,6 @@ const columns = [
     links: [
       { label: 'Privacy', href: '/privacy' },
       { label: 'Terms', href: '/terms' },
-      { label: 'Disclaimer', href: '/about#disclaimer' },
     ],
   },
 ];
@@ -41,12 +28,11 @@ const columns = [
 export function Footer() {
   return (
     <footer className="border-t border-border bg-[hsl(var(--ink))] text-[hsl(var(--paper))]/90 mt-20">
-      <div className="max-w-6xl mx-auto px-4 py-14 grid grid-cols-2 md:grid-cols-6 gap-8">
+      <div className="max-w-6xl mx-auto px-4 py-14 grid grid-cols-2 md:grid-cols-5 gap-8">
         <div className="col-span-2">
-          <p className="font-serif text-xl font-semibold text-[hsl(var(--paper))]">Edubase</p>
+          <p className="font-serif text-xl font-semibold text-[hsl(var(--paper))]">Stitch-It</p>
           <p className="mt-3 text-sm text-[hsl(var(--paper))]/60 max-w-xs">
-            A verified scholarship tracker and education resource guide.
-            Every figure sourced, every scholarship linked to its official page.
+            Get your body measurements from two photos — no tape measure, no tailor visit needed.
           </p>
         </div>
         {columns.map((col) => (
@@ -68,7 +54,8 @@ export function Footer() {
       </div>
       <div className="border-t border-white/10">
         <p className="max-w-6xl mx-auto px-4 py-5 text-xs text-[hsl(var(--paper))]/50">
-          © {new Date().getFullYear()} Edubase. Educational information only — always confirm figures with the official source linked on each page.
+          © {new Date().getFullYear()} Stitch-It. Measurements are AI-estimated and may vary from
+          a professional tailor's tape measurement.
         </p>
       </div>
     </footer>

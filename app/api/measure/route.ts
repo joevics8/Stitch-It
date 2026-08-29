@@ -76,7 +76,8 @@ export async function POST(req: NextRequest) {
     const guideBuffer = await readFile(guidePath);
 
     const ai = new GoogleGenAI({ apiKey });
-    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const primaryModel = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
+    const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3-flash-preview';
 
     const frontImage = dataUrlToInlineData(front.image);
     const sideImage = dataUrlToInlineData(side.image);
@@ -95,24 +96,30 @@ Girth measurements (chest, waist, hip, neck) must be inferred from the combinati
 
 Respond ONLY with JSON matching the provided schema. Set "confidence" based on image quality, pose clarity, and whether clothing was baggy. Use "notes" for anything that reduced your confidence (e.g. "arms partially occluded shoulder points").`;
 
-    const response = await ai.models.generateContent({
-      model,
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType: 'image/png', data: guideBuffer.toString('base64') } },
-            { inlineData: frontImage },
-            { inlineData: sideImage },
-          ],
-        },
-      ],
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: RESPONSE_SCHEMA,
+    const contents = [
+      {
+        role: 'user' as const,
+        parts: [
+          { text: prompt },
+          { inlineData: { mimeType: 'image/png', data: guideBuffer.toString('base64') } },
+          { inlineData: frontImage },
+          { inlineData: sideImage },
+        ],
       },
-    });
+    ];
+
+    const generationConfig = {
+      responseMimeType: 'application/json',
+      responseSchema: RESPONSE_SCHEMA,
+    };
+
+    let response;
+    try {
+      response = await ai.models.generateContent({ model: primaryModel, contents, config: generationConfig });
+    } catch (primaryErr) {
+      console.warn(`Gemini primary model "${primaryModel}" failed, falling back to "${fallbackModel}"`, primaryErr);
+      response = await ai.models.generateContent({ model: fallbackModel, contents, config: generationConfig });
+    }
 
     const text = response.text;
     if (!text) {

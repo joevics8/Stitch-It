@@ -8,15 +8,15 @@ import { CookieBanner } from '@/components/CookieBanner';
 import { Toaster } from '@/components/ui/toaster';
 import { fraunces, inter, plexMono } from '@/lib/fonts';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://edubase.com';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://stitch-it.app';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Edubase — Education Tools & Scholarship Tracker',
-    template: '%s | Edubase',
+    default: 'Stitch-It — Get Your Measurements From Two Photos',
+    template: '%s | Stitch-It',
   },
-  description: 'Country-specific educational tools, exam practice, and a verified scholarship tracker. Every tool sourced and explained. Every scholarship linked to its official page.',
+  description: 'Take a front and side photo, enter your height, and get your body measurements estimated for tailoring — no tape measure needed.',
   themeColor: '#0F1B33',
   viewport: {
     width: 'device-width',
@@ -30,15 +30,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    siteName: 'Edubase',
-    title: 'Edubase — Education Tools & Scholarship Tracker',
-    description: 'Country-specific educational tools, exam practice, and a verified scholarship tracker.',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Edubase' }],
+    siteName: 'Stitch-It',
+    title: 'Stitch-It — Get Your Measurements From Two Photos',
+    description: 'Take a front and side photo, enter your height, and get your body measurements estimated for tailoring.',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Stitch-It' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Edubase — Education Tools & Scholarship Tracker',
-    description: 'Country-specific educational tools, exam practice, and a verified scholarship tracker.',
+    title: 'Stitch-It — Get Your Measurements From Two Photos',
+    description: 'Take a front and side photo, enter your height, and get your body measurements estimated for tailoring.',
     images: ['/og-image.png'],
   },
   robots: { index: true, follow: true },
@@ -67,8 +67,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             });
           `}
         </Script>
-        {/* GA4 / AdSense script tags go back here once new Edubase
-            property + AdSense account IDs are issued (Phase 5). */}
+        {/* GA4 / AdSense script tags go back here once a Stitch-It
+            property + AdSense account IDs are issued. */}
       </head>
       <body>
         <div className="min-h-screen flex flex-col pb-16 md:pb-0">
