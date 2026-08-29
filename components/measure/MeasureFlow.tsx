@@ -1,14 +1,14 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
-import { Camera, Loader2, RotateCcw, Ruler, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Camera, Loader2, RotateCcw, Ruler, CheckCircle2, AlertCircle, ScanSearch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { detectPoseLandmarks, loadImage, type NamedLandmark } from '@/lib/pose';
 
-type Step = 'height' | 'front' | 'side' | 'review' | 'result';
+type Step = 'height' | 'front' | 'side' | 'analyzing' | 'review' | 'result';
 
 interface CapturedShot {
   dataUrl: string;
@@ -34,6 +34,8 @@ async function fileToDataUrl(file: File): Promise<string> {
 export function MeasureFlow() {
   const [step, setStep] = useState<Step>('height');
   const [heightCm, setHeightCm] = useState('');
+  const [frontDataUrl, setFrontDataUrl] = useState<string | null>(null);
+  const [sideDataUrl, setSideDataUrl] = useState<string | null>(null);
   const [front, setFront] = useState<CapturedShot | null>(null);
   const [side, setSide] = useState<CapturedShot | null>(null);
   const [busy, setBusy] = useState(false);
@@ -48,38 +50,76 @@ export function MeasureFlow() {
     fileInputRef.current?.click();
   };
 
+  // Capture only — no analysis here, so there's no wait between the two shots.
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const slot = pendingSlot.current;
     e.target.value = ''; // allow re-selecting the same file later
     if (!file || !slot) return;
 
-    setBusy(true);
     setError(null);
     try {
       const dataUrl = await fileToDataUrl(file);
-      const img = await loadImage(dataUrl);
-      const landmarks = await detectPoseLandmarks(img);
-
-      if (landmarks.length === 0) {
-        setError("Couldn't detect a person in that photo. Make sure your full body is visible, well-lit, and try again.");
-        return;
-      }
-
-      const shot: CapturedShot = { dataUrl, landmarks };
       if (slot === 'front') {
-        setFront(shot);
+        setFrontDataUrl(dataUrl);
         setStep('side');
       } else {
-        setSide(shot);
-        setStep('review');
+        setSideDataUrl(dataUrl);
+        setStep('analyzing');
       }
     } catch {
       setError('Something went wrong reading that photo. Please try again.');
+    }
+  }, []);
+
+  // Runs once both photos are in hand — analyzes each with MediaPipe.
+  const analyzeBoth = useCallback(async () => {
+    if (!frontDataUrl || !sideDataUrl) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const [frontImg, sideImg] = await Promise.all([loadImage(frontDataUrl), loadImage(sideDataUrl)]);
+      const [frontLandmarks, sideLandmarks] = await Promise.all([
+        detectPoseLandmarks(frontImg),
+        detectPoseLandmarks(sideImg),
+      ]);
+
+      if (frontLandmarks.length === 0 && sideLandmarks.length === 0) {
+        setError("Couldn't detect a person in either photo. Make sure your full body is visible and well-lit.");
+        setStep('front');
+        return;
+      }
+      if (frontLandmarks.length === 0) {
+        setError("Couldn't detect a person in the front photo. Please retake it.");
+        setFrontDataUrl(null);
+        setStep('front');
+        return;
+      }
+      if (sideLandmarks.length === 0) {
+        setError("Couldn't detect a person in the side photo. Please retake it.");
+        setSideDataUrl(null);
+        setStep('side');
+        return;
+      }
+
+      setFront({ dataUrl: frontDataUrl, landmarks: frontLandmarks });
+      setSide({ dataUrl: sideDataUrl, landmarks: sideLandmarks });
+      setStep('review');
+    } catch {
+      setError('Something went wrong analyzing your photos. Please try again.');
+      setStep('review');
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [frontDataUrl, sideDataUrl]);
+
+  // Kick off analysis as soon as we enter the 'analyzing' step.
+  useEffect(() => {
+    if (step === 'analyzing' && frontDataUrl && sideDataUrl && !front && !side) {
+      analyzeBoth();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, frontDataUrl, sideDataUrl]);
 
   const submitForMeasurement = async () => {
     if (!front || !side || !heightCm) return;
@@ -114,10 +154,21 @@ export function MeasureFlow() {
   const startOver = () => {
     setStep('height');
     setHeightCm('');
+    setFrontDataUrl(null);
+    setSideDataUrl(null);
     setFront(null);
     setSide(null);
     setResult(null);
     setError(null);
+  };
+
+  const retakeBoth = () => {
+    setFrontDataUrl(null);
+    setSideDataUrl(null);
+    setFront(null);
+    setSide(null);
+    setError(null);
+    setStep('front');
   };
 
   return (
@@ -182,16 +233,30 @@ export function MeasureFlow() {
           <h2 className="font-semibold mb-1">
             {step === 'front' ? 'Front-facing photo' : 'Side-facing photo'}
           </h2>
-          <ul className="text-xs text-muted-foreground text-left mt-3 mb-5 space-y-1.5 list-disc list-inside">
+          <p className="text-xs text-muted-foreground mb-3">
+            {step === 'front' ? 'Photo 1 of 2' : 'Photo 2 of 2'}
+          </p>
+          <ul className="text-xs text-muted-foreground text-left mt-1 mb-5 space-y-1.5 list-disc list-inside">
             <li>Wear fitted clothing — no baggy layers</li>
             <li>Stand against a plain background</li>
             <li>Full body in frame, arms slightly away from your sides</li>
             <li>{step === 'front' ? 'Face the camera directly' : 'Turn 90° so your side profile faces the camera'}</li>
           </ul>
-          <Button className="w-full" disabled={busy} onClick={() => openCameraFor(step)}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Camera className="h-4 w-4 mr-2" />}
-            {busy ? 'Analyzing photo…' : 'Take photo'}
+          <Button className="w-full" onClick={() => openCameraFor(step)}>
+            <Camera className="h-4 w-4 mr-2" />
+            Take photo
           </Button>
+        </Card>
+      )}
+
+      {step === 'analyzing' && (
+        <Card className="p-8 text-center">
+          <div className="mx-auto mb-4 h-14 w-14 rounded-full bg-[hsl(var(--verified))]/10 flex items-center justify-center">
+            <ScanSearch className="h-6 w-6 text-[hsl(var(--verified))] animate-pulse" />
+          </div>
+          <h2 className="font-semibold mb-1">Analyzing your photos&hellip;</h2>
+          <p className="text-xs text-muted-foreground">Detecting body landmarks in both shots.</p>
+          <Loader2 className="h-4 w-4 animate-spin mx-auto mt-4 text-muted-foreground" />
         </Card>
       )}
 
@@ -211,7 +276,7 @@ export function MeasureFlow() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={startOver} disabled={busy}>
+            <Button variant="outline" className="flex-1" onClick={retakeBoth} disabled={busy}>
               <RotateCcw className="h-4 w-4 mr-2" /> Retake
             </Button>
             <Button className="flex-1" onClick={submitForMeasurement} disabled={busy}>
