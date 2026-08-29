@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@google/genai": "^1.0.0",
     "@hookform/resolvers": "^3.9.0",
+    "@mediapipe/tasks-vision": "^0.10.17",
     "@netlify/plugin-nextjs": "^5.15.1",
     "@next/swc-wasm-nodejs": "13.5.1",
     "@radix-ui/react-accordion": "^1.2.0",
