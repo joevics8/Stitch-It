@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, Loader2, RotateCcw, Ruler, CheckCircle2, AlertCircle, ScanSearch } from 'lucide-react';
+import { Camera, Loader2, RotateCcw, Ruler, CheckCircle2, AlertCircle, ScanSearch, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,12 +42,18 @@ export function MeasureFlow() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<MeasurementResult | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const pendingSlot = useRef<'front' | 'side' | null>(null);
 
   const openCameraFor = (slot: 'front' | 'side') => {
     pendingSlot.current = slot;
-    fileInputRef.current?.click();
+    cameraInputRef.current?.click();
+  };
+
+  const openUploadFor = (slot: 'front' | 'side') => {
+    pendingSlot.current = slot;
+    uploadInputRef.current?.click();
   };
 
   // Capture only — no analysis here, so there's no wait between the two shots.
@@ -174,10 +180,17 @@ export function MeasureFlow() {
   return (
     <div className="max-w-md mx-auto px-4 py-10 pb-28">
       <input
-        ref={fileInputRef}
+        ref={cameraInputRef}
         type="file"
         accept="image/*"
         capture="environment"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      <input
+        ref={uploadInputRef}
+        type="file"
+        accept="image/*"
         className="hidden"
         onChange={handleFileChange}
       />
@@ -245,6 +258,10 @@ export function MeasureFlow() {
           <Button className="w-full" onClick={() => openCameraFor(step)}>
             <Camera className="h-4 w-4 mr-2" />
             Take photo
+          </Button>
+          <Button variant="outline" className="w-full mt-2" onClick={() => openUploadFor(step)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Upload from gallery
           </Button>
         </Card>
       )}
