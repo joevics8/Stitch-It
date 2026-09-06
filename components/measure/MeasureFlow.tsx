@@ -1,12 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, Loader2, RotateCcw, Ruler, CheckCircle2, AlertCircle, ScanSearch, Upload } from 'lucide-react';
+import { Camera, Loader2, RotateCcw, Ruler, CheckCircle2, AlertCircle, ScanSearch, Upload, Save } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { detectPoseLandmarks, loadImage, type NamedLandmark } from '@/lib/pose';
+import { createClient } from '@/lib/supabase/client';
 
 type Step = 'height' | 'front' | 'side' | 'analyzing' | 'review' | 'result';
 
@@ -32,6 +34,7 @@ async function fileToDataUrl(file: File): Promise<string> {
 }
 
 export function MeasureFlow() {
+  const router = useRouter();
   const [step, setStep] = useState<Step>('height');
   const [heightCm, setHeightCm] = useState('');
   const [frontDataUrl, setFrontDataUrl] = useState<string | null>(null);
@@ -41,6 +44,9 @@ export function MeasureFlow() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<MeasurementResult | null>(null);
+  const [profileName, setProfileName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
@@ -157,6 +163,47 @@ export function MeasureFlow() {
     }
   };
 
+  const saveProfile = async () => {
+    if (!result || !profileName.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login?redirect=/measure');
+        return;
+      }
+
+      const m = result.measurements;
+      const { error: insertError } = await supabase.from('measurement_profiles').insert({
+        user_id: user.id,
+        name: profileName.trim(),
+        source: 'photo',
+        unit: result.unit,
+        body_height: heightCm ? Number(heightCm) : null,
+        shoulder_width: m.shoulder_width ?? null,
+        chest_bust: m.chest ?? null,
+        waist: m.waist ?? null,
+        hip: m.hip ?? null,
+        arm_length: m.sleeve_length ?? null,
+        inseam: m.inseam ?? null,
+        neck: m.neck ?? null,
+        ai_confidence: result.confidence,
+        ai_notes: result.notes ?? null,
+      });
+
+      if (insertError) throw insertError;
+      setSaved(true);
+    } catch {
+      setError('Could not save this measurement. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const startOver = () => {
     setStep('height');
     setHeightCm('');
@@ -166,6 +213,8 @@ export function MeasureFlow() {
     setSide(null);
     setResult(null);
     setError(null);
+    setProfileName('');
+    setSaved(false);
   };
 
   const retakeBoth = () => {
@@ -324,9 +373,41 @@ export function MeasureFlow() {
             Confidence: <span className="capitalize font-medium">{result.confidence}</span>
             {result.notes ? ` — ${result.notes}` : ''}
           </p>
-          <Button variant="outline" className="w-full mt-5" onClick={startOver}>
-            <RotateCcw className="h-4 w-4 mr-2" /> Measure again
-          </Button>
+
+          {saved ? (
+            <div className="mt-5 rounded-sm border border-[hsl(var(--verified))] bg-[hsl(var(--verified))]/5 p-3 text-sm text-[hsl(var(--verified))] flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              Saved as &ldquo;{profileName}&rdquo;
+            </div>
+          ) : (
+            <div className="mt-5">
+              <Label htmlFor="profileName" className="text-sm font-semibold">
+                Save this as
+              </Label>
+              <Input
+                id="profileName"
+                value={profileName}
+                onChange={(e) => setProfileName(e.target.value)}
+                placeholder="e.g. Suit, Agbada, My Measurements"
+                className="mt-1.5"
+              />
+              <Button className="w-full mt-3" disabled={!profileName.trim() || saving} onClick={saveProfile}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                {saving ? 'Saving…' : 'Save Measurements'}
+              </Button>
+            </div>
+          )}
+
+          <div className="flex gap-2 mt-3">
+            {saved && (
+              <Button variant="outline" className="flex-1" onClick={() => router.push('/measurements')}>
+                View My Measurements
+              </Button>
+            )}
+            <Button variant="outline" className="flex-1" onClick={startOver}>
+              <RotateCcw className="h-4 w-4 mr-2" /> Measure again
+            </Button>
+          </div>
         </Card>
       )}
     </div>

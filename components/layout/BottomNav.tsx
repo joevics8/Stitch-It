@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Ruler, Info, HelpCircle } from 'lucide-react';
+import { Home, Ruler, Store, User } from 'lucide-react';
 
 const TABS = [
-  { href: '/', label: 'Home', icon: Home, match: (p: string) => p === '/' },
-  { href: '/measure', label: 'Measure', icon: Ruler, match: (p: string) => p.startsWith('/measure') },
-  { href: '/about', label: 'About', icon: Info, match: (p: string) => p.startsWith('/about') },
-  { href: '/faq', label: 'FAQ', icon: HelpCircle, match: (p: string) => p.startsWith('/faq') },
+  { href: '/', label: 'Explore', icon: Home, match: (p: string) => p === '/' },
+  { href: '/measurements', label: 'My Measurements', icon: Ruler, match: (p: string) => p.startsWith('/measurements') || p.startsWith('/measure') },
+  { href: '/shop', label: 'Shop', icon: Store, match: (p: string) => p.startsWith('/shop') },
+  { href: '/profile', label: 'Profile', icon: User, match: (p: string) => p.startsWith('/profile') },
 ];
 
 export function BottomNav() {
@@ -34,7 +34,7 @@ export function BottomNav() {
                 strokeWidth={active ? 2.25 : 1.75}
               />
               <span
-                className={`text-[10px] font-medium ${
+                className={`text-[9.5px] leading-[1.1] text-center px-0.5 font-medium ${
                   active ? 'text-[hsl(var(--verified))]' : 'text-muted-foreground'
                 }`}
               >

@@ -12,14 +12,14 @@ export function Header() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-            <Link href="/measure" className="hover:text-[hsl(var(--verified))] transition-colors">
-              Get Measured
+            <Link href="/measurements" className="hover:text-[hsl(var(--verified))] transition-colors">
+              My Measurements
             </Link>
-            <Link href="/about" className="hover:text-[hsl(var(--verified))] transition-colors">
-              About
+            <Link href="/shop" className="hover:text-[hsl(var(--verified))] transition-colors">
+              Shop
             </Link>
-            <Link href="/faq" className="hover:text-[hsl(var(--verified))] transition-colors">
-              FAQ
+            <Link href="/profile" className="hover:text-[hsl(var(--verified))] transition-colors">
+              Profile
             </Link>
           </nav>
         </div>
