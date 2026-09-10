@@ -29,6 +29,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Link href="/admin/styles" className="hover:text-[hsl(var(--seal))] transition-colors">
               Styles
             </Link>
+            <Link href="/admin/orders" className="hover:text-[hsl(var(--seal))] transition-colors">
+              Orders
+            </Link>
             <Link href="/admin/style-requests" className="hover:text-[hsl(var(--seal))] transition-colors">
               Style Requests
             </Link>
