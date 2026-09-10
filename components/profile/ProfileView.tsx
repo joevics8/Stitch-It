@@ -8,6 +8,7 @@ import type { User } from '@supabase/supabase-js';
 
 const LINKS: { label: string; href: string }[] = [
   { label: 'My Measurements', href: '/measurements' },
+  { label: 'Order History', href: '/orders' },
   { label: 'Contact Us', href: '/contact' },
   { label: 'FAQ', href: '/faq' },
   { label: 'Privacy Policy', href: '/privacy' },

@@ -51,16 +51,15 @@ export default async function CartPage() {
           </div>
 
           <div className="rounded-sm border border-dashed border-border p-4 text-xs text-muted-foreground mb-4">
-            Checkout and payment aren&rsquo;t connected yet — this bag is saved to your account so
-            nothing is lost once payments go live.
+            Delivery address and payment are collected on the next step.
           </div>
 
-          <button
-            disabled
-            className="w-full rounded-sm bg-muted text-muted-foreground font-semibold py-3.5 cursor-not-allowed"
+          <Link
+            href="/checkout"
+            className="block w-full text-center rounded-sm bg-[hsl(var(--verified))] text-white font-semibold py-3.5 hover:opacity-90 transition-opacity"
           >
-            Checkout coming soon
-          </button>
+            Proceed to Checkout
+          </Link>
         </>
       )}
     </div>
