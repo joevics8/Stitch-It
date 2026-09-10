@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ShoppingBag } from 'lucide-react';
 
 export function Header() {
   return (
@@ -22,6 +23,14 @@ export function Header() {
               Profile
             </Link>
           </nav>
+
+          <Link
+            href="/cart"
+            aria-label="Your bag"
+            className="flex items-center justify-center h-9 w-9 rounded-full border border-border hover:border-[hsl(var(--verified))] hover:text-[hsl(var(--verified))] transition-colors"
+          >
+            <ShoppingBag className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     </header>
