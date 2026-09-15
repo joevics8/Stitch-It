@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { EXPRESS_DELIVERY_FEE, type OrderItem } from '@/lib/orders';
 import type { CartItem } from '@/lib/styles';
+import { lineItemInfo } from '@/lib/cart';
 
 export async function POST(req: NextRequest) {
   const supabase = createClient();
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => null);
-  const { deliveryState, deliveryLga, deliveryTown, deliveryAddress, expressDelivery } = body ?? {};
+  const { deliveryState, deliveryLga, deliveryTown, deliveryAddress, expressDelivery, couponCode } = body ?? {};
 
   if (!deliveryState || !deliveryAddress) {
     return NextResponse.json({ error: 'Delivery state and address are required.' }, { status: 400 });
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   const { data: cartData, error: cartError } = await supabase
     .from('cart_items')
-    .select('*, styles(*)')
+    .select('*, styles(*), products(*)')
     .eq('user_id', user.id);
 
   if (cartError) {
@@ -35,20 +36,43 @@ export async function POST(req: NextRequest) {
   }
 
   const items: OrderItem[] = cartItems
-    .filter((c) => c.styles)
-    .map((c) => ({
-      style_id: c.style_id,
-      name: c.styles!.name,
-      image: c.styles!.images[0] ?? null,
-      price: c.styles!.price,
-      quantity: c.quantity,
-      color: c.color,
-    }));
+    .map((c) => {
+      const info = lineItemInfo(c);
+      if (!info) return null;
+      return {
+        style_id: c.style_id,
+        product_id: c.product_id,
+        name: info.name,
+        image: info.image,
+        price: info.price,
+        quantity: c.quantity,
+        color: c.color,
+      };
+    })
+    .filter((item): item is OrderItem => item !== null);
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const deliveryFee = Math.max(...cartItems.map((c) => c.styles?.delivery_cost ?? 0), 0);
+  const deliveryFee = Math.max(...cartItems.map((c) => lineItemInfo(c)?.deliveryCost ?? 0), 0);
   const expressFee = expressDelivery ? EXPRESS_DELIVERY_FEE : 0;
-  const total = subtotal + deliveryFee + expressFee;
+
+  let discount = 0;
+  let appliedCouponCode: string | null = null;
+  if (couponCode) {
+    const { data: couponResult } = await supabase
+      .rpc('validate_coupon', { coupon_code: couponCode, order_subtotal: subtotal })
+      .single<{ valid: boolean; discount: number; message: string }>();
+    if (couponResult?.valid) {
+      discount = couponResult.discount;
+      appliedCouponCode = couponCode.toUpperCase();
+    } else {
+      return NextResponse.json(
+        { error: couponResult?.message || 'Invalid or expired coupon code.' },
+        { status: 400 }
+      );
+    }
+  }
+
+  const total = subtotal + deliveryFee + expressFee - discount;
 
   const reference = `SI-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
@@ -66,6 +90,8 @@ export async function POST(req: NextRequest) {
       delivery_lga: deliveryLga || null,
       delivery_town: deliveryTown || null,
       delivery_address: deliveryAddress,
+      coupon_code: appliedCouponCode,
+      discount,
       total,
       payment_reference: reference,
       payment_status: 'pending',

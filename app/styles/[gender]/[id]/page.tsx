@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { AddToCart } from '@/components/styles/AddToCart';
+import { AddToBag } from '@/components/cart/AddToBag';
 import { formatNaira, type Style } from '@/lib/styles';
 
 export const dynamic = 'force-dynamic';
@@ -57,6 +57,12 @@ export default async function StyleDetailsPage({ params }: { params: { id: strin
         )}
 
         <div className="rounded-sm border border-border divide-y divide-border mb-6">
+          {style.materials.length > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 text-sm">
+              <span className="text-muted-foreground">Materials</span>
+              <span className="font-medium text-right">{style.materials.join(', ')}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between px-4 py-3 text-sm">
             <span className="text-muted-foreground">Fabric Details</span>
             <span className="font-medium">{style.fabric_details ?? 'On request'}</span>
@@ -73,7 +79,7 @@ export default async function StyleDetailsPage({ params }: { params: { id: strin
           </div>
         </div>
 
-        <AddToCart styleId={style.id} />
+        <AddToBag styleId={style.id} showMeasurements showColor />
       </div>
     </div>
   );

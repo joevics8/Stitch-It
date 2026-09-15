@@ -1,5 +1,6 @@
 export interface OrderItem {
-  style_id: string;
+  style_id: string | null;
+  product_id: string | null;
   name: string;
   image: string | null;
   price: number;

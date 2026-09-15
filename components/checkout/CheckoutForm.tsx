@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createClient } from '@/lib/supabase/client';
 import { formatNaira, type CartItem } from '@/lib/styles';
+import { lineItemInfo } from '@/lib/cart';
 import { NIGERIA_STATES, EXPRESS_DELIVERY_FEE } from '@/lib/orders';
 
 declare global {
@@ -29,6 +30,10 @@ export function CheckoutForm() {
   const [town, setTown] = useState('');
   const [address, setAddress] = useState('');
   const [express, setExpress] = useState(false);
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [couponMessage, setCouponMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scriptReady, setScriptReady] = useState(false);
@@ -36,7 +41,7 @@ export function CheckoutForm() {
   useEffect(() => {
     const supabase = createClient();
     Promise.all([
-      supabase.from('cart_items').select('*, styles(*)').order('created_at', { ascending: false }),
+      supabase.from('cart_items').select('*, styles(*), products(*)').order('created_at', { ascending: false }),
       supabase.auth.getUser(),
     ]).then(([cartRes, userRes]) => {
       setItems((cartRes.data as unknown as CartItem[]) ?? []);
@@ -45,10 +50,36 @@ export function CheckoutForm() {
     });
   }, []);
 
-  const subtotal = items.reduce((sum, item) => sum + (item.styles?.price ?? 0) * item.quantity, 0);
-  const deliveryFee = Math.max(...items.map((i) => i.styles?.delivery_cost ?? 0), 0);
+  const subtotal = items.reduce((sum, item) => sum + (lineItemInfo(item)?.price ?? 0) * item.quantity, 0);
+  const deliveryFee = Math.max(...items.map((i) => lineItemInfo(i)?.deliveryCost ?? 0), 0);
   const expressFee = express ? EXPRESS_DELIVERY_FEE : 0;
-  const total = subtotal + deliveryFee + expressFee;
+  const discount = appliedCoupon?.discount ?? 0;
+  const total = subtotal + deliveryFee + expressFee - discount;
+
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) return;
+    setCouponBusy(true);
+    setCouponMessage(null);
+    try {
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponInput.trim(), subtotal }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAppliedCoupon({ code: couponInput.trim().toUpperCase(), discount: data.discount });
+        setCouponMessage({ text: `Coupon applied — you saved ${formatNaira(data.discount)}`, ok: true });
+      } else {
+        setAppliedCoupon(null);
+        setCouponMessage({ text: data.message || 'Invalid coupon code', ok: false });
+      }
+    } catch {
+      setCouponMessage({ text: 'Could not validate coupon. Please try again.', ok: false });
+    } finally {
+      setCouponBusy(false);
+    }
+  };
 
   const handlePlaceOrder = async () => {
     if (!state || !address.trim()) {
@@ -78,6 +109,7 @@ export function CheckoutForm() {
           deliveryTown: town,
           deliveryAddress: address,
           expressDelivery: express,
+          couponCode: appliedCoupon?.code,
         }),
       });
       const data = await res.json();
@@ -155,17 +187,21 @@ export function CheckoutForm() {
           {items.length} item{items.length > 1 ? 's' : ''}
         </p>
         <div className="space-y-2">
-          {items.map((item) => (
-            <div key={item.id} className="flex justify-between text-sm">
-              <span className="text-muted-foreground truncate pr-2">
-                {item.styles?.name} {item.color && `(${item.color})`}
-                {item.quantity > 1 && ` ×${item.quantity}`}
-              </span>
-              <span className="font-medium shrink-0">
-                {formatNaira((item.styles?.price ?? 0) * item.quantity)}
-              </span>
-            </div>
-          ))}
+          {items.map((item) => {
+            const info = lineItemInfo(item);
+            if (!info) return null;
+            return (
+              <div key={item.id} className="flex justify-between text-sm">
+                <span className="text-muted-foreground truncate pr-2">
+                  {info.name} {item.color && `(${item.color})`}
+                  {item.quantity > 1 && ` ×${item.quantity}`}
+                </span>
+                <span className="font-medium shrink-0">
+                  {formatNaira(info.price * item.quantity)}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -209,6 +245,32 @@ export function CheckoutForm() {
         </label>
       </div>
 
+      <div className="mb-6">
+        <p className="text-sm font-semibold mb-2">Coupon code</p>
+        <div className="flex gap-2">
+          <Input
+            value={couponInput}
+            onChange={(e) => setCouponInput(e.target.value)}
+            placeholder="Enter coupon"
+            disabled={!!appliedCoupon}
+            className="flex-1"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={couponBusy || !couponInput.trim() || !!appliedCoupon}
+            onClick={handleApplyCoupon}
+          >
+            {couponBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+          </Button>
+        </div>
+        {couponMessage && (
+          <p className={`text-xs mt-1.5 ${couponMessage.ok ? 'text-[hsl(var(--verified))]' : 'text-[hsl(var(--rust))]'}`}>
+            {couponMessage.text}
+          </p>
+        )}
+      </div>
+
       <div className="rounded-sm border border-border p-4 mb-6 space-y-2 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Item price</span>
@@ -222,6 +284,12 @@ export function CheckoutForm() {
           <span className="text-muted-foreground">Express delivery</span>
           <span>{formatNaira(expressFee)}</span>
         </div>
+        {discount > 0 && (
+          <div className="flex justify-between text-[hsl(var(--verified))]">
+            <span>Coupon ({appliedCoupon?.code})</span>
+            <span>-{formatNaira(discount)}</span>
+          </div>
+        )}
         <div className="flex justify-between font-semibold pt-2 border-t border-border">
           <span>Grand Total</span>
           <span className="text-[hsl(var(--verified))]">{formatNaira(total)}</span>

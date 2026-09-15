@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { createClient } from '@/lib/supabase/client';
+import { compressImageFile } from '@/lib/image-compression';
 
 export function RequestStyleForm() {
   const router = useRouter();
@@ -45,10 +46,11 @@ export function RequestStyleForm() {
 
       let image_url: string | null = null;
       if (imageFile) {
-        const path = `${user.id}/${Date.now()}-${imageFile.name}`;
+        const compressed = await compressImageFile(imageFile);
+        const path = `${user.id}/${Date.now()}-${compressed.name}`;
         const { error: uploadError } = await supabase.storage
           .from('style-requests')
-          .upload(path, imageFile);
+          .upload(path, compressed);
         if (uploadError) throw uploadError;
         const { data: signed } = await supabase.storage
           .from('style-requests')

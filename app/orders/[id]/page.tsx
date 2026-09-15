@@ -60,6 +60,12 @@ export default async function OrderDetailPage({ params }: { params: { id: string
             <span className="font-medium">{formatNaira(item.price * item.quantity)}</span>
           </div>
         ))}
+        {order.discount > 0 && (
+          <div className="flex justify-between text-sm text-[hsl(var(--verified))] pt-2 border-t border-border">
+            <span>Coupon ({order.coupon_code})</span>
+            <span>-{formatNaira(order.discount)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-sm pt-2 border-t border-border font-semibold">
           <span>Total</span>
           <span className="text-[hsl(var(--verified))]">{formatNaira(order.total)}</span>

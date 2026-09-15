@@ -8,34 +8,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createClient } from '@/lib/supabase/client';
 import { compressImageFile } from '@/lib/image-compression';
-import type { Style } from '@/lib/styles';
-
-const GENDERS: Style['gender'][] = ['female', 'male', 'kid'];
-const CATEGORIES: Style['category'][] = ['party', 'casual', 'wedding', 'corporate', 'church'];
+import { PRODUCT_CATEGORIES, type Product } from '@/lib/products';
 
 interface Props {
-  style?: Style;
+  product?: Product;
 }
 
-export function StyleForm({ style }: Props) {
+export function ProductForm({ product }: Props) {
   const router = useRouter();
-  const isEdit = !!style;
+  const isEdit = !!product;
 
-  const [name, setName] = useState(style?.name ?? '');
-  const [gender, setGender] = useState<Style['gender']>(style?.gender ?? 'female');
-  const [category, setCategory] = useState<Style['category']>(style?.category ?? 'party');
-  const [price, setPrice] = useState(style?.price?.toString() ?? '');
-  const [compareAtPrice, setCompareAtPrice] = useState(style?.compare_at_price?.toString() ?? '');
-  const [description, setDescription] = useState(style?.description ?? '');
-  const [fabricDetails, setFabricDetails] = useState(style?.fabric_details ?? '');
-  const [materials, setMaterials] = useState((style?.materials ?? []).join(', '));
-  const [deliveryTimeline, setDeliveryTimeline] = useState(
-    style?.delivery_timeline ?? '7-10 working days'
-  );
-  const [deliveryCost, setDeliveryCost] = useState(style?.delivery_cost?.toString() ?? '2000');
-  const [isNew, setIsNew] = useState(style?.is_new ?? true);
-  const [isActive, setIsActive] = useState(style?.is_active ?? true);
-  const [existingImages, setExistingImages] = useState<string[]>(style?.images ?? []);
+  const [name, setName] = useState(product?.name ?? '');
+  const [category, setCategory] = useState<Product['category']>(product?.category ?? 'bags');
+  const [gender, setGender] = useState<Product['gender']>(product?.gender ?? 'unisex');
+  const [price, setPrice] = useState(product?.price?.toString() ?? '');
+  const [compareAtPrice, setCompareAtPrice] = useState(product?.compare_at_price?.toString() ?? '');
+  const [description, setDescription] = useState(product?.description ?? '');
+  const [rating, setRating] = useState(product?.rating?.toString() ?? '0');
+  const [ratingCount, setRatingCount] = useState(product?.rating_count?.toString() ?? '0');
+  const [isNew, setIsNew] = useState(product?.is_new ?? true);
+  const [isActive, setIsActive] = useState(product?.is_active ?? true);
+  const [existingImages, setExistingImages] = useState<string[]>(product?.images ?? []);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,37 +53,32 @@ export function StyleForm({ style }: Props) {
       for (const file of newFiles) {
         const compressed = await compressImageFile(file);
         const path = `${user.id}/${Date.now()}-${compressed.name}`;
-        const { error: uploadError } = await supabase.storage.from('styles').upload(path, compressed);
+        const { error: uploadError } = await supabase.storage.from('products').upload(path, compressed);
         if (uploadError) throw uploadError;
-        const { data: pub } = supabase.storage.from('styles').getPublicUrl(path);
+        const { data: pub } = supabase.storage.from('products').getPublicUrl(path);
         uploadedUrls.push(pub.publicUrl);
       }
 
       const payload = {
         name: name.trim(),
-        gender,
         category,
+        gender,
         price: Number(price),
         compare_at_price: compareAtPrice ? Number(compareAtPrice) : null,
         description: description.trim() || null,
-        fabric_details: fabricDetails.trim() || null,
-        materials: materials
-          .split(',')
-          .map((m) => m.trim())
-          .filter(Boolean),
-        delivery_timeline: deliveryTimeline.trim() || null,
-        delivery_cost: deliveryCost ? Number(deliveryCost) : 0,
+        rating: Number(rating) || 0,
+        rating_count: Number(ratingCount) || 0,
         is_new: isNew,
         is_active: isActive,
         images: [...existingImages, ...uploadedUrls],
       };
 
       const result = isEdit
-        ? await supabase.from('styles').update(payload).eq('id', style!.id)
-        : await supabase.from('styles').insert(payload);
+        ? await supabase.from('products').update(payload).eq('id', product!.id)
+        : await supabase.from('products').insert(payload);
 
       if (result.error) throw result.error;
-      router.push('/admin/styles');
+      router.push('/admin/products');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
@@ -112,7 +100,7 @@ export function StyleForm({ style }: Props) {
         <Label className="text-sm font-semibold">Images</Label>
         <div className="flex flex-wrap gap-3 mt-2">
           {existingImages.map((url) => (
-            <div key={url} className="relative h-20 w-16 rounded-sm overflow-hidden bg-muted">
+            <div key={url} className="relative h-20 w-20 rounded-sm overflow-hidden bg-muted">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={url} alt="" className="w-full h-full object-cover" />
               <button
@@ -125,7 +113,7 @@ export function StyleForm({ style }: Props) {
             </div>
           ))}
           {newFiles.map((file, i) => (
-            <div key={i} className="relative h-20 w-16 rounded-sm overflow-hidden bg-muted">
+            <div key={i} className="relative h-20 w-20 rounded-sm overflow-hidden bg-muted">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
               <button
@@ -137,7 +125,7 @@ export function StyleForm({ style }: Props) {
               </button>
             </div>
           ))}
-          <label className="h-20 w-16 rounded-sm border border-dashed border-border flex items-center justify-center text-xs text-muted-foreground cursor-pointer hover:border-[hsl(var(--verified))]">
+          <label className="h-20 w-20 rounded-sm border border-dashed border-border flex items-center justify-center text-xs text-muted-foreground cursor-pointer hover:border-[hsl(var(--verified))]">
             + Add
             <input
               type="file"
@@ -157,27 +145,27 @@ export function StyleForm({ style }: Props) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label className="text-sm font-semibold">Gender</Label>
+          <Label className="text-sm font-semibold">Category</Label>
           <select
-            value={gender}
-            onChange={(e) => setGender(e.target.value as Style['gender'])}
+            value={category}
+            onChange={(e) => setCategory(e.target.value as Product['category'])}
             className="mt-1.5 w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm capitalize"
           >
-            {GENDERS.map((g) => (
-              <option key={g} value={g}>{g}</option>
+            {PRODUCT_CATEGORIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
             ))}
           </select>
         </div>
         <div>
-          <Label className="text-sm font-semibold">Category</Label>
+          <Label className="text-sm font-semibold">Gender</Label>
           <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value as Style['category'])}
+            value={gender}
+            onChange={(e) => setGender(e.target.value as Product['gender'])}
             className="mt-1.5 w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm capitalize"
           >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
+            <option value="unisex">Unisex</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
           </select>
         </div>
       </div>
@@ -204,30 +192,14 @@ export function StyleForm({ style }: Props) {
         />
       </div>
 
-      <div>
-        <Label htmlFor="fabric" className="text-sm font-semibold">Fabric details</Label>
-        <Input id="fabric" value={fabricDetails} onChange={(e) => setFabricDetails(e.target.value)} className="mt-1.5" />
-      </div>
-
-      <div>
-        <Label htmlFor="materials" className="text-sm font-semibold">Materials (comma separated)</Label>
-        <Input
-          id="materials"
-          value={materials}
-          onChange={(e) => setMaterials(e.target.value)}
-          placeholder="e.g. Lace, Ankara, Silk"
-          className="mt-1.5"
-        />
-      </div>
-
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="deliveryTimeline" className="text-sm font-semibold">Delivery timeline</Label>
-          <Input id="deliveryTimeline" value={deliveryTimeline} onChange={(e) => setDeliveryTimeline(e.target.value)} className="mt-1.5" />
+          <Label htmlFor="rating" className="text-sm font-semibold">Rating (0–5)</Label>
+          <Input id="rating" type="number" step="0.1" min="0" max="5" value={rating} onChange={(e) => setRating(e.target.value)} className="mt-1.5" />
         </div>
         <div>
-          <Label htmlFor="deliveryCost" className="text-sm font-semibold">Delivery cost (₦)</Label>
-          <Input id="deliveryCost" type="number" value={deliveryCost} onChange={(e) => setDeliveryCost(e.target.value)} className="mt-1.5" />
+          <Label htmlFor="ratingCount" className="text-sm font-semibold">Rating count</Label>
+          <Input id="ratingCount" type="number" min="0" value={ratingCount} onChange={(e) => setRatingCount(e.target.value)} className="mt-1.5" />
         </div>
       </div>
 
@@ -238,13 +210,13 @@ export function StyleForm({ style }: Props) {
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-          Active (visible in catalog)
+          Active (visible in shop)
         </label>
       </div>
 
       <Button type="submit" disabled={busy} className="w-full sm:w-auto">
         {busy && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-        {isEdit ? 'Save Changes' : 'Add Style'}
+        {isEdit ? 'Save Changes' : 'Add Product'}
       </Button>
     </form>
   );

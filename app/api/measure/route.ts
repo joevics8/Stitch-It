@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { readFile } from 'fs/promises';
 import path from 'path';
+import { validateMeasurements } from '@/lib/measurement-validation';
 
 export const runtime = 'nodejs';
 
@@ -9,8 +10,8 @@ interface LandmarkPoint {
   name: string;
   x: number;
   y: number;
-  z?: number;
-  visibility?: number;
+  z: number;
+  visibility: number;
 }
 
 interface PoseInput {
@@ -86,15 +87,17 @@ export async function POST(req: NextRequest) {
 
 You are given:
 1. A reference diagram (image 1) showing the standard body measurement points and how each is defined.
-2. A front-facing photo of a person (image 2), plus MediaPipe pose landmarks detected on it (normalized 0-1 coordinates, origin top-left): ${JSON.stringify(front.landmarks)}
-3. A side-facing photo of the same person (image 3), plus its MediaPipe pose landmarks: ${JSON.stringify(side.landmarks)}
+2. A front-facing photo of a person (image 2), plus MediaPipe pose landmarks detected on it (normalized 0-1 coordinates, origin top-left). Each landmark includes a "visibility" score (0-1) — MediaPipe's own confidence that the point was actually visible rather than occluded or guessed: ${JSON.stringify(front.landmarks)}
+3. A side-facing photo of the same person (image 3), plus its MediaPipe pose landmarks with the same visibility scores: ${JSON.stringify(side.landmarks)}
 4. The person's actual height: ${heightCm} cm — use this as your real-world scale reference.
 
 Using the height as scale and the landmark coordinates plus what you observe visually in both photos, estimate these measurements in centimeters: shoulder width, chest/bust, waist, hip, sleeve length, inseam, and neck circumference.
 
 Girth measurements (chest, waist, hip, neck) must be inferred from the combination of front width and side depth (treat the torso cross-section as roughly elliptical) — do not just double the front-view width.
 
-Respond ONLY with JSON matching the provided schema. Set "confidence" based on image quality, pose clarity, and whether clothing was baggy. Use "notes" for anything that reduced your confidence (e.g. "arms partially occluded shoulder points").`;
+Any landmark with visibility below 0.5 was likely occluded or estimated by MediaPipe rather than clearly seen — rely more on your own visual reading of the photo for measurements that depend on that point, and lower your confidence accordingly.
+
+Respond ONLY with JSON matching the provided schema. Set "confidence" based on image quality, pose clarity, landmark visibility scores, and whether clothing was baggy. Use "notes" for anything that reduced your confidence (e.g. "arms partially occluded shoulder points").`;
 
     const contents = [
       {
@@ -127,6 +130,18 @@ Respond ONLY with JSON matching the provided schema. Set "confidence" based on i
     }
 
     const parsed = JSON.parse(text);
+
+    // Independent sanity check — never trust the model's self-reported
+    // confidence alone. If the numbers themselves are implausible, flag it
+    // regardless of what Gemini says about itself.
+    const validation = validateMeasurements(parsed.measurements ?? {}, heightCm);
+    if (!validation.ok) {
+      parsed.confidence = 'low';
+      parsed.warnings = validation.warnings;
+      const warningNote = `Automatic check flagged: ${validation.warnings.join('; ')}.`;
+      parsed.notes = parsed.notes ? `${warningNote} ${parsed.notes}` : warningNote;
+    }
+
     return NextResponse.json(parsed);
   } catch (err) {
     console.error('measure route error', err);

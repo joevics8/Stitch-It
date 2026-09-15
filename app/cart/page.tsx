@@ -5,6 +5,7 @@ import { ShoppingBag } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { CartItemRow } from '@/components/cart/CartItemRow';
 import { formatNaira, type CartItem } from '@/lib/styles';
+import { lineItemInfo } from '@/lib/cart';
 
 export const metadata: Metadata = { title: 'Your Bag' };
 export const dynamic = 'force-dynamic';
@@ -19,11 +20,11 @@ export default async function CartPage() {
 
   const { data } = await supabase
     .from('cart_items')
-    .select('*, styles(*)')
+    .select('*, styles(*), products(*)')
     .order('created_at', { ascending: false });
 
   const items = (data ?? []) as unknown as CartItem[];
-  const subtotal = items.reduce((sum, item) => sum + (item.styles?.price ?? 0) * item.quantity, 0);
+  const subtotal = items.reduce((sum, item) => sum + (lineItemInfo(item)?.price ?? 0) * item.quantity, 0);
 
   return (
     <div className="max-w-lg mx-auto px-4 py-10 pb-32">

@@ -7,6 +7,7 @@ export interface Style {
   compare_at_price: number | null;
   description: string | null;
   images: string[];
+  materials: string[];
   fabric_details: string | null;
   delivery_timeline: string | null;
   delivery_cost: number | null;
@@ -18,13 +19,15 @@ export interface Style {
 export interface CartItem {
   id: string;
   user_id: string;
-  style_id: string;
+  style_id: string | null;
+  product_id: string | null;
   measurement_profile_id: string | null;
   color: string | null;
   customization_notes: string | null;
   quantity: number;
   created_at: string;
   styles: Style | null;
+  products: import('./products').Product | null;
 }
 
 export const GENDER_LABELS: Record<Style['gender'], string> = {
