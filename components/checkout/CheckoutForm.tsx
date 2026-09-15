@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Script from 'next/script';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ declare global {
 
 export function CheckoutForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
@@ -29,7 +30,7 @@ export function CheckoutForm() {
   const [lga, setLga] = useState('');
   const [town, setTown] = useState('');
   const [address, setAddress] = useState('');
-  const [express, setExpress] = useState(false);
+  const [express, setExpress] = useState(searchParams.get('express') === '1');
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
   const [couponBusy, setCouponBusy] = useState(false);

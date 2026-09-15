@@ -3,11 +3,11 @@ import { Heart } from 'lucide-react';
 import type { Style } from '@/lib/styles';
 import { formatNaira } from '@/lib/styles';
 
-export function StyleCard({ style }: { style: Style }) {
+export function StyleCard({ style, href }: { style: Style; href?: string }) {
   const image = style.images[0];
 
   return (
-    <Link href={`/styles/${style.gender}/${style.id}`} className="block group">
+    <Link href={href ?? `/styles/${style.id}`} className="block group">
       <div className="relative aspect-[3/4] rounded-sm overflow-hidden bg-muted mb-2">
         {style.is_new && (
           <span className="absolute top-2 left-2 z-10 bg-[hsl(var(--verified))] text-white text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-sm">

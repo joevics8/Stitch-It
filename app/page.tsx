@@ -8,9 +8,9 @@ export const metadata: Metadata = {
 };
 
 const CATEGORIES = [
-  { label: 'Female Styles', href: '/styles/female', gradient: 'from-[#7A3B5E] to-[#3E1F33]' },
-  { label: 'Male Styles', href: '/styles/male', gradient: 'from-[#8A3A2C] to-[#3D1712]' },
-  { label: 'Styles for Kids', href: '/styles/kids', gradient: 'from-[#2E4B5E] to-[#152530]' },
+  { label: 'Female Styles', href: '/styles?gender=female', gradient: 'from-[#7A3B5E] to-[#3E1F33]' },
+  { label: 'Male Styles', href: '/styles?gender=male', gradient: 'from-[#8A3A2C] to-[#3D1712]' },
+  { label: 'Styles for Kids', href: '/styles?gender=kid', gradient: 'from-[#2E4B5E] to-[#152530]' },
 ];
 
 export default function HomePage() {

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { CheckoutForm } from '@/components/checkout/CheckoutForm';
@@ -14,5 +15,9 @@ export default async function CheckoutPage() {
 
   if (!user) redirect('/login?redirect=/checkout');
 
-  return <CheckoutForm />;
+  return (
+    <Suspense fallback={null}>
+      <CheckoutForm />
+    </Suspense>
+  );
 }
